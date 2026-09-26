@@ -6,7 +6,6 @@ public class EnemySpawner : MonoBehaviour
     public static EnemySpawner Instance;
 
     [Header("Prefabs")]
-    // FormerlySerializedAs preserves existing Inspector assignments if the name changed
     [FormerlySerializedAs("fodderEnemyPrefab")]
     public GameObject enemyPrefab;
 
@@ -17,7 +16,17 @@ public class EnemySpawner : MonoBehaviour
     public float spawnRadiusMax = 13f;
     public float arenaLimit = 22f;
 
-    [Header("Telemetry Debug")]
+    [Header("Adaptive AI Pacing")]
+    [Tooltip("Tension value below which buzzer-beater front spawns trigger")]
+    public float highTensionThreshold = 0.25f;
+    [Tooltip("Spawning interval multiplier when in high tension panic state")]
+    public float highTensionSpeedMultiplier = 0.4f;
+    [Tooltip("Forward distance to place clutch enemies")]
+    public float clutchSpawnDistance = 8.0f;
+    [Tooltip("Left/Right spread variance for clutch spawns")]
+    public float clutchSpread = 2.5f;
+
+    [Header("Telemetry Monitor")]
     [SerializeField] private float currentTension = 0.5f;
 
     private float nextSpawnTime;
@@ -39,16 +48,14 @@ public class EnemySpawner : MonoBehaviour
 
     void Update()
     {
-        if (TimeManager.Instance != null && TimeManager.Instance.isDead) return;
+        if (TimeManager.Instance != null && (TimeManager.Instance.isDead || TimeManager.Instance.isPaused)) return;
 
-        // Auto-recover player reference if Start missed it
         if (player == null)
         {
             FindPlayer();
             if (player == null) return;
         }
 
-        // Calculate Tension Factor: (CurrentTimer / MaxTimer) * KillVelocity
         if (TimeManager.Instance != null)
         {
             float timerRatio = TimeManager.Instance.currentTime / TimeManager.Instance.maxTime;
@@ -62,8 +69,10 @@ public class EnemySpawner : MonoBehaviour
                 EvaluateAndSpawn(currentTension);
             }
 
-            // Adjust spawn cadence dynamically based on tension
-            float dynamicInterval = (currentTension < 0.25f) ? baseSpawnInterval * 0.4f : baseSpawnInterval;
+            float dynamicInterval = (currentTension < highTensionThreshold)
+                ? baseSpawnInterval * highTensionSpeedMultiplier
+                : baseSpawnInterval;
+
             nextSpawnTime = Time.time + dynamicInterval;
         }
     }
@@ -84,16 +93,14 @@ public class EnemySpawner : MonoBehaviour
 
         Vector3 spawnPos;
 
-        if (tension < 0.25f)
+        if (tension < highTensionThreshold)
         {
-            // High Tension: Spawn directly in the player's forward vector for buzzer-beater saves
-            Vector3 forwardOffset = player.forward * Random.Range(spawnRadiusMin, spawnRadiusMax * 0.8f);
-            Vector3 lateralJitter = player.right * Random.Range(-2.5f, 2.5f);
+            Vector3 forwardOffset = player.forward * clutchSpawnDistance;
+            Vector3 lateralJitter = player.right * Random.Range(-clutchSpread, clutchSpread);
             spawnPos = player.position + forwardOffset + lateralJitter;
         }
         else
         {
-            // Normal / Low Tension: Ambient perimeter distribution
             Vector2 circle = Random.insideUnitCircle.normalized * Random.Range(spawnRadiusMin, spawnRadiusMax);
             spawnPos = new Vector3(player.position.x + circle.x, 1f, player.position.z + circle.y);
         }

@@ -1,3 +1,4 @@
+using System;
 using System.Collections;
 using UnityEngine;
 
@@ -9,11 +10,12 @@ public class PlayerShooting : MonoBehaviour
     public float range = 30f;
     public LayerMask hitLayers;
 
+    [Header("Perk Upgrades")]
+    public bool hasPiercingSlugs = false;
+
     [Header("Tracer Visuals")]
     public LineRenderer tracer;
-    [Tooltip("Keep checked to prevent camera shake from multiplying tracer lines across frames.")]
     public bool singleFrameTracer = true;
-    [Tooltip("Only active if singleFrameTracer is unchecked.")]
     [Range(0.01f, 0.2f)] public float customTracerDuration = 0.03f;
 
     [Header("Recoil Camera Shake")]
@@ -35,7 +37,7 @@ public class PlayerShooting : MonoBehaviour
 
     void Update()
     {
-        if (TimeManager.Instance != null && TimeManager.Instance.isDead) return;
+        if (TimeManager.Instance != null && (TimeManager.Instance.isDead || TimeManager.Instance.isPaused)) return;
 
         if (Input.GetButton("Fire1") && Time.time >= nextFireTime)
         {
@@ -50,14 +52,32 @@ public class PlayerShooting : MonoBehaviour
         Vector3 shootDir = transform.forward;
         Vector3 endPoint = origin + shootDir * range;
 
-        if (Physics.Raycast(origin, shootDir, out RaycastHit hit, range, hitLayers))
+        if (hasPiercingSlugs)
         {
-            endPoint = hit.point;
+            // Pierce through all aligned targets
+            RaycastHit[] hits = Physics.RaycastAll(origin, shootDir, range, hitLayers);
+            Array.Sort(hits, (a, b) => a.distance.CompareTo(b.distance));
 
-            EnemyTarget target = hit.collider.GetComponent<EnemyTarget>();
-            if (target != null)
+            for (int i = 0; i < hits.Length; i++)
             {
-                target.TakeDamage(1);
+                EnemyTarget target = hits[i].collider.GetComponent<EnemyTarget>();
+                if (target != null)
+                {
+                    target.TakeDamage(1);
+                }
+            }
+        }
+        else
+        {
+            // Standard single-hit hitscan
+            if (Physics.Raycast(origin, shootDir, out RaycastHit hit, range, hitLayers))
+            {
+                endPoint = hit.point;
+                EnemyTarget target = hit.collider.GetComponent<EnemyTarget>();
+                if (target != null)
+                {
+                    target.TakeDamage(1);
+                }
             }
         }
 
@@ -80,14 +100,8 @@ public class PlayerShooting : MonoBehaviour
         tracer.SetPosition(1, end);
         tracer.enabled = true;
 
-        if (singleFrameTracer)
-        {
-            yield return null;
-        }
-        else
-        {
-            yield return new WaitForSeconds(customTracerDuration);
-        }
+        if (singleFrameTracer) yield return null;
+        else yield return new WaitForSeconds(customTracerDuration);
 
         tracer.enabled = false;
         tracerRoutine = null;

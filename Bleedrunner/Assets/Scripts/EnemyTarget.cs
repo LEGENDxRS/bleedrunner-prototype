@@ -27,6 +27,16 @@ public class EnemyTarget : MonoBehaviour
         rb.constraints = RigidbodyConstraints.FreezePositionY | RigidbodyConstraints.FreezeRotation;
     }
 
+    void OnEnable()
+    {
+        EnemySpawner.ActiveEnemyCount++;
+    }
+
+    void OnDisable()
+    {
+        EnemySpawner.ActiveEnemyCount = Mathf.Max(0, EnemySpawner.ActiveEnemyCount - 1);
+    }
+
     void Start()
     {
         PlayerController25D target = FindFirstObjectByType<PlayerController25D>();
@@ -35,7 +45,7 @@ public class EnemyTarget : MonoBehaviour
 
     void FixedUpdate()
     {
-        if (player == null || (TimeManager.Instance != null && TimeManager.Instance.isDead))
+        if (player == null || (TimeManager.Instance != null && (TimeManager.Instance.isDead || TimeManager.Instance.isPaused)))
         {
             rb.linearVelocity = Vector3.zero;
             return;
@@ -66,14 +76,26 @@ public class EnemyTarget : MonoBehaviour
         {
             TimeManager.Instance.AddTime(timeReward);
         }
+
+        // Notify Chamber Progression
+        if (ChamberManager.Instance != null)
+        {
+            ChamberManager.Instance.RegisterKill();
+        }
+
         Destroy(gameObject);
     }
 
     void OnCollisionEnter(Collision collision)
     {
+        if (TimeManager.Instance != null && TimeManager.Instance.isPaused) return;
+
         if (collision.gameObject.CompareTag("Player"))
         {
-            if (TimeManager.Instance != null)
+            // Ignore hit penalty during 0.5s grace buffer
+            bool isProtected = ChamberManager.Instance != null && ChamberManager.Instance.isGraceBufferActive;
+
+            if (!isProtected && TimeManager.Instance != null)
             {
                 TimeManager.Instance.DeductTime(timePenaltyOnHit);
             }

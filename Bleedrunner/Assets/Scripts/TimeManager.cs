@@ -8,7 +8,18 @@ public class TimeManager : MonoBehaviour
     [Header("Timer Settings")]
     public float maxTime = 6.0f;
     public float currentTime;
+    public float timerDrainRate = 1.0f;
     public bool isDead = false;
+    public bool isPaused = false;
+
+    [Header("Warning & Visual Settings")]
+    [Tooltip("Time in seconds when the timer display begins flashing")]
+    public float criticalTimeThreshold = 2.0f;
+    [Tooltip("Flash rate speed when under the critical threshold")]
+    public float warningFlashSpeed = 8.0f;
+    public Color normalTimerColor = new Color(1f, 0.25f, 0.2f);
+    public Color criticalColorA = Color.red;
+    public Color criticalColorB = Color.yellow;
 
     [Header("UI Hooks")]
     public TextMeshProUGUI timerDisplay;
@@ -38,7 +49,6 @@ public class TimeManager : MonoBehaviour
 
     void Update()
     {
-        // 150ms Instant Restart Requirement (No Scene Hitching)
         if (isDead)
         {
             if (Input.GetKeyDown(KeyCode.R))
@@ -48,9 +58,11 @@ public class TimeManager : MonoBehaviour
             return;
         }
 
-        currentTime -= Time.deltaTime;
+        if (isPaused) return;
 
-        // Track kills per second for the AI Director
+        currentTime -= Time.deltaTime * timerDrainRate;
+
+        // Sample kills per second for AI Director tension calculation
         velocitySampleTimer += Time.deltaTime;
         if (velocitySampleTimer >= 1.0f)
         {
@@ -73,9 +85,15 @@ public class TimeManager : MonoBehaviour
         if (timerDisplay != null)
         {
             timerDisplay.text = currentTime.ToString("F2") + "s";
-            timerDisplay.color = (currentTime <= 2.0f)
-                ? Color.Lerp(Color.red, Color.yellow, Mathf.PingPong(Time.time * 8f, 1f))
-                : new Color(1f, 0.25f, 0.2f);
+
+            if (currentTime <= criticalTimeThreshold)
+            {
+                timerDisplay.color = Color.Lerp(criticalColorA, criticalColorB, Mathf.PingPong(Time.time * warningFlashSpeed, 1f));
+            }
+            else
+            {
+                timerDisplay.color = normalTimerColor;
+            }
         }
     }
 
@@ -100,20 +118,20 @@ public class TimeManager : MonoBehaviour
     void TriggerDeath()
     {
         isDead = true;
+        Debug.Log("<color=red>[BLEEDRUNNER]</color> Player flatlined!");
+
         if (gameOverUI != null) gameOverUI.SetActive(true);
         if (player != null) player.enabled = false;
     }
 
     public void SoftResetRun()
     {
-        // Purge active enemies instantly
         EnemyTarget[] activeEnemies = FindObjectsByType<EnemyTarget>(FindObjectsSortMode.None);
         for (int i = 0; i < activeEnemies.Length; i++)
         {
             Destroy(activeEnemies[i].gameObject);
         }
 
-        // Reset Player
         if (player != null)
         {
             player.transform.position = playerStartPos;
@@ -122,13 +140,19 @@ public class TimeManager : MonoBehaviour
             if (rb != null) rb.linearVelocity = Vector3.zero;
         }
 
-        // Reset Timers & Director State
         currentTime = maxTime;
+        timerDrainRate = 1.0f;
         isDead = false;
+        isPaused = false;
         killsThisSecond = 0;
         killVelocity = 0f;
         velocitySampleTimer = 0f;
 
         if (gameOverUI != null) gameOverUI.SetActive(false);
+
+        if (ChamberManager.Instance != null)
+        {
+            ChamberManager.Instance.ResetProgression();
+        }
     }
 }
