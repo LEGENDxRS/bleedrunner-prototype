@@ -11,14 +11,20 @@ public class EnemyTarget : MonoBehaviour
     [Header("Movement")]
     public float chaseSpeed = 4.5f;
 
+    [Header("Impact Camera Shake")]
+    public bool enableHitShake = true;
+    [Range(0.05f, 0.6f)] public float hitShakeDuration = 0.25f;
+    [Range(0.1f, 2.0f)] public float hitShakeMagnitude = 0.8f;
+
     private Transform player;
     private Rigidbody rb;
 
     void Awake()
     {
         rb = GetComponent<Rigidbody>();
-        rb.freezeRotation = true;
+        rb.interpolation = RigidbodyInterpolation.Interpolate;
         rb.useGravity = false;
+        rb.constraints = RigidbodyConstraints.FreezePositionY | RigidbodyConstraints.FreezeRotation;
     }
 
     void Start()
@@ -41,7 +47,7 @@ public class EnemyTarget : MonoBehaviour
 
         if (direction.sqrMagnitude > 0.001f)
         {
-            transform.rotation = Quaternion.LookRotation(direction);
+            rb.MoveRotation(Quaternion.LookRotation(direction));
         }
     }
 
@@ -71,10 +77,12 @@ public class EnemyTarget : MonoBehaviour
             {
                 TimeManager.Instance.DeductTime(timePenaltyOnHit);
             }
-            if (CameraFollow.Instance != null)
+
+            if (enableHitShake && CameraFollow.Instance != null)
             {
-                CameraFollow.Instance.TriggerShake(0.25f, 0.8f);
+                CameraFollow.Instance.TriggerShake(hitShakeDuration, hitShakeMagnitude);
             }
+
             Destroy(gameObject);
         }
     }

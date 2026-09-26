@@ -1,53 +1,104 @@
 using UnityEngine;
+using UnityEngine.Serialization;
 
 public class EnemySpawner : MonoBehaviour
 {
-    [Header("Spawn Settings")]
-    public GameObject enemyPrefab;
-    public float spawnInterval = 1.2f;
-    public float spawnRadiusMin = 6f;
-    public float spawnRadiusMax = 14f;
-    public int maxEnemiesAlive = 8;
+    public static EnemySpawner Instance;
 
-    [Header("Arena Bounds")]
+    [Header("Prefabs")]
+    // FormerlySerializedAs preserves existing Inspector assignments if the name changed
+    [FormerlySerializedAs("fodderEnemyPrefab")]
+    public GameObject enemyPrefab;
+
+    [Header("Spawn Balances")]
+    public float baseSpawnInterval = 1.0f;
+    public int maxEnemiesAlive = 10;
+    public float spawnRadiusMin = 7f;
+    public float spawnRadiusMax = 13f;
     public float arenaLimit = 22f;
+
+    [Header("Telemetry Debug")]
+    [SerializeField] private float currentTension = 0.5f;
 
     private float nextSpawnTime;
     private Transform player;
+    public static int ActiveEnemyCount = 0;
+
+    void Awake()
+    {
+        if (Instance == null) Instance = this;
+        else Destroy(gameObject);
+
+        ActiveEnemyCount = 0;
+    }
 
     void Start()
     {
-        PlayerController25D p = FindFirstObjectByType<PlayerController25D>();
-        if (p != null) player = p.transform;
+        FindPlayer();
     }
 
     void Update()
     {
         if (TimeManager.Instance != null && TimeManager.Instance.isDead) return;
 
+        // Auto-recover player reference if Start missed it
+        if (player == null)
+        {
+            FindPlayer();
+            if (player == null) return;
+        }
+
+        // Calculate Tension Factor: (CurrentTimer / MaxTimer) * KillVelocity
+        if (TimeManager.Instance != null)
+        {
+            float timerRatio = TimeManager.Instance.currentTime / TimeManager.Instance.maxTime;
+            currentTension = timerRatio * Mathf.Max(TimeManager.Instance.killVelocity, 0.5f);
+        }
+
         if (Time.time >= nextSpawnTime)
         {
-            // Only spawn if we haven't hit the active enemy cap
-            int currentEnemies = GameObject.FindGameObjectsWithTag("Enemy").Length;
-            if (currentEnemies < maxEnemiesAlive)
+            if (ActiveEnemyCount < maxEnemiesAlive)
             {
-                SpawnEnemy();
+                EvaluateAndSpawn(currentTension);
             }
-            nextSpawnTime = Time.time + spawnInterval;
+
+            // Adjust spawn cadence dynamically based on tension
+            float dynamicInterval = (currentTension < 0.25f) ? baseSpawnInterval * 0.4f : baseSpawnInterval;
+            nextSpawnTime = Time.time + dynamicInterval;
         }
     }
 
-    void SpawnEnemy()
+    void FindPlayer()
     {
-        if (enemyPrefab == null) return;
+        PlayerController25D p = FindFirstObjectByType<PlayerController25D>();
+        if (p != null) player = p.transform;
+    }
 
-        Vector3 spawnCenter = player != null ? player.position : Vector3.zero;
+    void EvaluateAndSpawn(float tension)
+    {
+        if (enemyPrefab == null)
+        {
+            Debug.LogError("<color=red>[EnemySpawner]</color> Enemy Prefab slot is EMPTY in the Inspector!");
+            return;
+        }
 
-        // Pick a random direction around the player within min/max radius
-        Vector2 randomCircle = Random.insideUnitCircle.normalized * Random.Range(spawnRadiusMin, spawnRadiusMax);
-        Vector3 spawnPos = new Vector3(spawnCenter.x + randomCircle.x, 1f, spawnCenter.z + randomCircle.y);
+        Vector3 spawnPos;
 
-        // Clamp inside arena boundary
+        if (tension < 0.25f)
+        {
+            // High Tension: Spawn directly in the player's forward vector for buzzer-beater saves
+            Vector3 forwardOffset = player.forward * Random.Range(spawnRadiusMin, spawnRadiusMax * 0.8f);
+            Vector3 lateralJitter = player.right * Random.Range(-2.5f, 2.5f);
+            spawnPos = player.position + forwardOffset + lateralJitter;
+        }
+        else
+        {
+            // Normal / Low Tension: Ambient perimeter distribution
+            Vector2 circle = Random.insideUnitCircle.normalized * Random.Range(spawnRadiusMin, spawnRadiusMax);
+            spawnPos = new Vector3(player.position.x + circle.x, 1f, player.position.z + circle.y);
+        }
+
+        spawnPos.y = 1f;
         spawnPos.x = Mathf.Clamp(spawnPos.x, -arenaLimit, arenaLimit);
         spawnPos.z = Mathf.Clamp(spawnPos.z, -arenaLimit, arenaLimit);
 

@@ -1,5 +1,4 @@
 using UnityEngine;
-using UnityEngine.SceneManagement;
 using TMPro;
 
 public class TimeManager : MonoBehaviour
@@ -15,6 +14,14 @@ public class TimeManager : MonoBehaviour
     public TextMeshProUGUI timerDisplay;
     public GameObject gameOverUI;
 
+    [Header("Telemetry & Director")]
+    public int killsThisSecond = 0;
+    public float killVelocity = 0f;
+    private float velocitySampleTimer = 0f;
+
+    private PlayerController25D player;
+    private Vector3 playerStartPos;
+
     void Awake()
     {
         if (Instance == null) Instance = this;
@@ -23,19 +30,34 @@ public class TimeManager : MonoBehaviour
         currentTime = maxTime;
     }
 
+    void Start()
+    {
+        player = FindFirstObjectByType<PlayerController25D>();
+        if (player != null) playerStartPos = player.transform.position;
+    }
+
     void Update()
     {
+        // 150ms Instant Restart Requirement (No Scene Hitching)
         if (isDead)
         {
-            // Reload active scene using name so buildIndex doesn't fail
             if (Input.GetKeyDown(KeyCode.R))
             {
-                SceneManager.LoadScene(SceneManager.GetActiveScene().name);
+                SoftResetRun();
             }
             return;
         }
 
         currentTime -= Time.deltaTime;
+
+        // Track kills per second for the AI Director
+        velocitySampleTimer += Time.deltaTime;
+        if (velocitySampleTimer >= 1.0f)
+        {
+            killVelocity = killsThisSecond / velocitySampleTimer;
+            killsThisSecond = 0;
+            velocitySampleTimer = 0f;
+        }
 
         if (currentTime <= 0f)
         {
@@ -51,15 +73,9 @@ public class TimeManager : MonoBehaviour
         if (timerDisplay != null)
         {
             timerDisplay.text = currentTime.ToString("F2") + "s";
-
-            if (currentTime <= 2.0f)
-            {
-                timerDisplay.color = Color.Lerp(Color.red, Color.yellow, Mathf.PingPong(Time.time * 8f, 1f));
-            }
-            else
-            {
-                timerDisplay.color = new Color(1f, 0.25f, 0.2f);
-            }
+            timerDisplay.color = (currentTime <= 2.0f)
+                ? Color.Lerp(Color.red, Color.yellow, Mathf.PingPong(Time.time * 8f, 1f))
+                : new Color(1f, 0.25f, 0.2f);
         }
     }
 
@@ -67,6 +83,7 @@ public class TimeManager : MonoBehaviour
     {
         if (isDead) return;
         currentTime = Mathf.Min(currentTime + amount, maxTime);
+        killsThisSecond++;
     }
 
     public void DeductTime(float amount)
@@ -83,17 +100,35 @@ public class TimeManager : MonoBehaviour
     void TriggerDeath()
     {
         isDead = true;
-        Debug.Log("<color=red>[BLEEDRUNNER]</color> Player flatlined!");
+        if (gameOverUI != null) gameOverUI.SetActive(true);
+        if (player != null) player.enabled = false;
+    }
 
-        if (gameOverUI != null)
+    public void SoftResetRun()
+    {
+        // Purge active enemies instantly
+        EnemyTarget[] activeEnemies = FindObjectsByType<EnemyTarget>(FindObjectsSortMode.None);
+        for (int i = 0; i < activeEnemies.Length; i++)
         {
-            gameOverUI.SetActive(true);
+            Destroy(activeEnemies[i].gameObject);
         }
 
-        PlayerController25D player = FindFirstObjectByType<PlayerController25D>();
+        // Reset Player
         if (player != null)
         {
-            player.enabled = false;
+            player.transform.position = playerStartPos;
+            player.enabled = true;
+            Rigidbody rb = player.GetComponent<Rigidbody>();
+            if (rb != null) rb.linearVelocity = Vector3.zero;
         }
+
+        // Reset Timers & Director State
+        currentTime = maxTime;
+        isDead = false;
+        killsThisSecond = 0;
+        killVelocity = 0f;
+        velocitySampleTimer = 0f;
+
+        if (gameOverUI != null) gameOverUI.SetActive(false);
     }
 }

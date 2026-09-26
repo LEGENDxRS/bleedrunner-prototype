@@ -6,6 +6,10 @@ public class PlayerController25D : MonoBehaviour
     [Header("Movement")]
     public float moveSpeed = 10f;
 
+    [Header("Aiming Stability")]
+    [Tooltip("Stops camera shake from shifting your mouse raycast and twitching the player.")]
+    public bool stabilizeAimDuringShake = true;
+
     private Rigidbody rb;
     private Vector3 moveInput;
     private Camera cam;
@@ -22,13 +26,17 @@ public class PlayerController25D : MonoBehaviour
 
     void Update()
     {
-        // Traversal input
         float x = Input.GetAxisRaw("Horizontal");
         float z = Input.GetAxisRaw("Vertical");
         moveInput = new Vector3(x, 0f, z).normalized;
 
-        // Mouse aiming plane
         Ray ray = cam.ScreenPointToRay(Input.mousePosition);
+
+        if (stabilizeAimDuringShake && CameraFollow.Instance != null)
+        {
+            ray.origin -= CameraFollow.Instance.shakeOffset;
+        }
+
         if (aimPlane.Raycast(ray, out float enter))
         {
             Vector3 targetPoint = ray.GetPoint(enter);

@@ -9,11 +9,29 @@ public class PlayerShooting : MonoBehaviour
     public float range = 30f;
     public LayerMask hitLayers;
 
-    [Header("Visuals")]
+    [Header("Tracer Visuals")]
     public LineRenderer tracer;
-    public float tracerDuration = 0.04f;
+    [Tooltip("Keep checked to prevent camera shake from multiplying tracer lines across frames.")]
+    public bool singleFrameTracer = true;
+    [Tooltip("Only active if singleFrameTracer is unchecked.")]
+    [Range(0.01f, 0.2f)] public float customTracerDuration = 0.03f;
+
+    [Header("Recoil Camera Shake")]
+    public bool enableRecoilShake = true;
+    [Range(0.01f, 0.2f)] public float recoilDuration = 0.04f;
+    [Range(0.01f, 0.5f)] public float recoilMagnitude = 0.15f;
 
     private float nextFireTime;
+    private Coroutine tracerRoutine;
+
+    void Awake()
+    {
+        if (tracer != null)
+        {
+            tracer.useWorldSpace = true;
+            tracer.positionCount = 2;
+        }
+    }
 
     void Update()
     {
@@ -36,7 +54,6 @@ public class PlayerShooting : MonoBehaviour
         {
             endPoint = hit.point;
 
-            // Damage enemy if hit
             EnemyTarget target = hit.collider.GetComponent<EnemyTarget>();
             if (target != null)
             {
@@ -44,27 +61,35 @@ public class PlayerShooting : MonoBehaviour
             }
         }
 
-        // 1. Draw bullet tracer
         if (tracer != null)
         {
-            StartCoroutine(RenderTracer(origin, endPoint));
+            if (tracerRoutine != null) StopCoroutine(tracerRoutine);
+            tracerRoutine = StartCoroutine(RenderTracer(origin, endPoint));
         }
 
-        // 2. Firing recoil shake
-        if (CameraFollow.Instance != null)
+        if (enableRecoilShake && CameraFollow.Instance != null)
         {
-            CameraFollow.Instance.TriggerShake(0.06f, 0.25f);
+            CameraFollow.Instance.TriggerShake(recoilDuration, recoilMagnitude);
         }
     }
 
     IEnumerator RenderTracer(Vector3 start, Vector3 end)
     {
-        tracer.enabled = true;
+        tracer.positionCount = 2;
         tracer.SetPosition(0, start);
         tracer.SetPosition(1, end);
+        tracer.enabled = true;
 
-        yield return new WaitForSeconds(tracerDuration);
+        if (singleFrameTracer)
+        {
+            yield return null;
+        }
+        else
+        {
+            yield return new WaitForSeconds(customTracerDuration);
+        }
 
         tracer.enabled = false;
+        tracerRoutine = null;
     }
 }

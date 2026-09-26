@@ -5,12 +5,15 @@ public class CameraFollow : MonoBehaviour
 {
     public static CameraFollow Instance;
 
+    [Header("Tracking Settings")]
     public Transform target;
     public Vector3 offset = new Vector3(0f, 14f, -8f);
-    public float smoothTime = 0.08f;
+    [Range(0.01f, 0.3f)] public float smoothTime = 0.08f;
+
+    [HideInInspector]
+    public Vector3 shakeOffset = Vector3.zero;
 
     private Vector3 currentVelocity = Vector3.zero;
-    private Vector3 shakeOffset = Vector3.zero;
 
     void Awake()
     {
@@ -22,11 +25,9 @@ public class CameraFollow : MonoBehaviour
     {
         if (target == null) return;
 
-        // 1. Smoothly track the target
         Vector3 targetPos = target.position + offset;
         Vector3 smoothedPos = Vector3.SmoothDamp(transform.position, targetPos, ref currentVelocity, smoothTime);
 
-        // 2. Add shake directly to final position so smoothing doesn't cancel it out
         transform.position = smoothedPos + shakeOffset;
     }
 
