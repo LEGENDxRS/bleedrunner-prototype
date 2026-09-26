@@ -25,7 +25,7 @@ public class PerkDraftUI : MonoBehaviour
     public TextMeshProUGUI title3;
     public TextMeshProUGUI desc3;
 
-    private List<PerkConfig> currentChoices;
+    private List<PerkData> currentChoices;
 
     void Awake()
     {
@@ -60,12 +60,25 @@ public class PerkDraftUI : MonoBehaviour
         if (index < currentChoices.Count)
         {
             btn.gameObject.SetActive(true);
-            if (titleText != null) titleText.text = currentChoices[index].perkName;
-            if (descText != null) descText.text = currentChoices[index].description;
+            PerkData perk = currentChoices[index];
+
+            if (titleText != null)
+            {
+                titleText.text = perk.perkName;
+                titleText.color = perk.cardColor;
+            }
+
+            if (descText != null) descText.text = perk.description;
+
+            // Tint button background slightly to match rarity
+            Image cardBg = btn.GetComponent<Image>();
+            if (cardBg != null)
+            {
+                cardBg.color = new Color(perk.cardColor.r * 0.25f, perk.cardColor.g * 0.25f, perk.cardColor.b * 0.25f, 0.95f);
+            }
 
             btn.onClick.RemoveAllListeners();
-            PerkType perkType = currentChoices[index].type;
-            btn.onClick.AddListener(() => SelectPerk(perkType));
+            btn.onClick.AddListener(() => SelectPerk(perk));
         }
         else
         {
@@ -73,7 +86,7 @@ public class PerkDraftUI : MonoBehaviour
         }
     }
 
-    void SelectPerk(PerkType perk)
+    void SelectPerk(PerkData perk)
     {
         if (PerkManager.Instance != null)
         {
