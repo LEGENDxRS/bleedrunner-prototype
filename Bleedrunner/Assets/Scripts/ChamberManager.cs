@@ -7,16 +7,13 @@ public class ChamberManager : MonoBehaviour
 
     [Header("Chamber Difficulty Scaling")]
     public int currentChamber = 1;
-    [Tooltip("Starting kills required in Chamber 1")]
     public int baseKillsRequired = 6;
-    [Tooltip("Additional kills added for each subsequent chamber")]
     public int killsPerChamberIncrease = 2;
     public int killsRequired;
     public int currentChamberKills = 0;
     public bool isExitUnlocked = false;
 
     [Header("Chamber Buffer (Grace Invulnerability)")]
-    [Tooltip("Duration in seconds of invulnerability when entering a new chamber")]
     public float bufferDuration = 0.5f;
     public bool isGraceBufferActive = false;
 
@@ -46,6 +43,19 @@ public class ChamberManager : MonoBehaviour
         currentChamberKills = 0;
         killsRequired = baseKillsRequired + ((currentChamber - 1) * killsPerChamberIncrease);
         isExitUnlocked = false;
+
+        // Wipe stray enemies from previous chamber
+        EnemyTarget[] strayEnemies = FindObjectsByType<EnemyTarget>(FindObjectsSortMode.None);
+        for (int i = 0; i < strayEnemies.Length; i++)
+        {
+            Destroy(strayEnemies[i].gameObject);
+        }
+
+        // Generate brand new procedural maze for this chamber
+        if (ProceduralMazeGenerator.Instance != null)
+        {
+            ProceduralMazeGenerator.Instance.GenerateNewLevel();
+        }
 
         StartCoroutine(ChamberBufferRoutine());
 

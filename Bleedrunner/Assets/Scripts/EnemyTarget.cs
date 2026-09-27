@@ -51,13 +51,28 @@ public class EnemyTarget : MonoBehaviour
             return;
         }
 
-        Vector3 direction = (player.position - transform.position).normalized;
-        direction.y = 0f;
-        rb.linearVelocity = direction * chaseSpeed;
-
-        if (direction.sqrMagnitude > 0.001f)
+        // Get smart navigation waypoint from the maze generator
+        Vector3 targetPoint = player.position;
+        if (ProceduralMazeGenerator.Instance != null)
         {
-            rb.MoveRotation(Quaternion.LookRotation(direction));
+            targetPoint = ProceduralMazeGenerator.Instance.GetNextWaypointForEnemy(transform.position, player.position);
+        }
+
+        Vector3 direction = (targetPoint - transform.position);
+        direction.y = 0f;
+
+        if (direction.sqrMagnitude > 0.05f)
+        {
+            direction.Normalize();
+            rb.linearVelocity = direction * chaseSpeed;
+            rb.MoveRotation(Quaternion.Slerp(transform.rotation, Quaternion.LookRotation(direction), 12f * Time.fixedDeltaTime));
+        }
+        else
+        {
+            // Close to node, push directly toward player
+            Vector3 direct = (player.position - transform.position);
+            direct.y = 0f;
+            rb.linearVelocity = direct.normalized * chaseSpeed;
         }
     }
 
@@ -77,7 +92,6 @@ public class EnemyTarget : MonoBehaviour
             TimeManager.Instance.AddTime(timeReward);
         }
 
-        // Notify Chamber Progression
         if (ChamberManager.Instance != null)
         {
             ChamberManager.Instance.RegisterKill();
@@ -92,7 +106,6 @@ public class EnemyTarget : MonoBehaviour
 
         if (collision.gameObject.CompareTag("Player"))
         {
-            // Ignore hit penalty during 0.5s grace buffer
             bool isProtected = ChamberManager.Instance != null && ChamberManager.Instance.isGraceBufferActive;
 
             if (!isProtected && TimeManager.Instance != null)

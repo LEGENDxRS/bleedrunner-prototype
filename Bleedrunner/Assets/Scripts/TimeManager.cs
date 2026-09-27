@@ -126,38 +126,31 @@ public class TimeManager : MonoBehaviour
 
     public void SoftResetRun()
     {
-        // 1. Purge remaining enemies
         EnemyTarget[] activeEnemies = FindObjectsByType<EnemyTarget>(FindObjectsSortMode.None);
         for (int i = 0; i < activeEnemies.Length; i++)
         {
             Destroy(activeEnemies[i].gameObject);
         }
 
-        // 2. Reset Player Position and Baseline Movement Stats
         if (player != null)
         {
-            player.transform.position = playerStartPos;
             player.enabled = true;
             player.ResetPlayerStats();
-
             Rigidbody rb = player.GetComponent<Rigidbody>();
             if (rb != null) rb.linearVelocity = Vector3.zero;
         }
 
-        // 3. Reset Weapon Stats (Piercing, Fire Rate)
         PlayerShooting shooting = FindFirstObjectByType<PlayerShooting>();
         if (shooting != null)
         {
             shooting.ResetShootingStats();
         }
 
-        // 4. Wipe Perk Pool History
         if (PerkManager.Instance != null)
         {
             PerkManager.Instance.ResetPerks();
         }
 
-        // 5. Restore Timer & Chamber Progression
         maxTime = initialMaxTime;
         currentTime = maxTime;
         timerDrainRate = 1.0f;

@@ -533,6 +533,7 @@ MonoBehaviour:
   firePoint: {fileID: 1120250721}
   fireRate: 0.3
   range: 30
+  projectileRadius: 0.2
   hitLayers:
     serializedVersion: 2
     m_Bits: 4294967295
@@ -1612,6 +1613,7 @@ GameObject:
   - component: {fileID: 784463058}
   - component: {fileID: 784463059}
   - component: {fileID: 784463060}
+  - component: {fileID: 784463061}
   m_Layer: 0
   m_Name: _GameManager
   m_TagString: Untagged
@@ -1677,11 +1679,8 @@ MonoBehaviour:
   maxEnemiesAlive: 8
   spawnRadiusMin: 6
   spawnRadiusMax: 14
-  arenaLimit: 22
   highTensionThreshold: 0.25
   highTensionSpeedMultiplier: 0.4
-  clutchSpawnDistance: 8
-  clutchSpread: 2.5
   currentTension: 0.5
 --- !u!114 &784463059
 MonoBehaviour:
@@ -1795,9 +1794,39 @@ MonoBehaviour:
   isGraceBufferActive: 0
   chamberPrefix: 'CHAMBER '
   eliminatePrefix: 'ELIMINATE: '
-  gateUnlockedMessage: <color=#00FF66>GATE BREACH READY - EXTRACT NOW</color>
+  gateUnlockedMessage: <color=#00FF66>FIND AND ENTER THE GATE</color>
   chamberText: {fileID: 1426921440}
   objectiveText: {fileID: 1276478436}
+--- !u!114 &784463061
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 784463055}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: b781765f9e2bf7d43a2f9ad714ecdb64, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::ProceduralMazeGenerator
+  exitGateObject: {fileID: 1670579523}
+  playerObject: {fileID: 169203809}
+  corridorWidth: 5.5
+  mazeColumns: 15
+  mazeRows: 15
+  wallHeight: 2.5
+  spawnRoomRadius: 2
+  exitRoomRadius: 2
+  bonusCombatRooms: 3
+  bonusRoomRadius: 2
+  randomizeExitGateLocation: 1
+  minExitDistanceFromPlayer: 30
+  corridorLoopFactor: 0.55
+  customWallPrefab: {fileID: 0}
+  customFloorPrefab: {fileID: 0}
+  customPillarPrefab: {fileID: 0}
+  fallbackWallMaterial: {fileID: 0}
+  fallbackWallColor: {r: 0.4811321, g: 0.4811321, b: 0.4811321, a: 1}
 --- !u!1 &796187730
 GameObject:
   m_ObjectHideFlags: 0
