@@ -282,7 +282,7 @@ RectTransform:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 61059711}
-  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
   m_LocalPosition: {x: 0, y: 0, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
@@ -371,7 +371,7 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 0}
   m_AnchorMax: {x: 0, y: 0}
-  m_AnchoredPosition: {x: -600, y: -200}
+  m_AnchoredPosition: {x: 300, y: 300}
   m_SizeDelta: {x: 240, y: 240}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &98971014
@@ -1960,6 +1960,7 @@ GameObject:
   - component: {fileID: 784463059}
   - component: {fileID: 784463060}
   - component: {fileID: 784463061}
+  - component: {fileID: 784463062}
   m_Layer: 0
   m_Name: _GameManager
   m_TagString: Untagged
@@ -2180,6 +2181,22 @@ MonoBehaviour:
   customPillarPrefab: {fileID: 0}
   fallbackWallMaterial: {fileID: 0}
   fallbackWallColor: {r: 0.4811321, g: 0.4811321, b: 0.4811321, a: 1}
+--- !u!114 &784463062
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 784463055}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: f241922d6fef338489020e554459d691, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::WebGLPerformanceFix
+  lockedFrameRate: 120
+  enableDownscaleOnMobile: 1
+  mobileRenderWidth: 1280
+  mobileRenderHeight: 720
 --- !u!1 &796187730
 GameObject:
   m_ObjectHideFlags: 0
@@ -3347,7 +3364,7 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 1, y: 0}
   m_AnchorMax: {x: 1, y: 0}
-  m_AnchoredPosition: {x: 600, y: -200}
+  m_AnchoredPosition: {x: -300, y: 300}
   m_SizeDelta: {x: 240, y: 240}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &1332937708
@@ -3547,10 +3564,10 @@ RectTransform:
   - {fileID: 1044120788}
   - {fileID: 209217302}
   - {fileID: 1776352070}
-  - {fileID: 61059712}
   - {fileID: 1426921438}
   - {fileID: 1276478438}
   - {fileID: 1832743369}
+  - {fileID: 61059712}
   m_Father: {fileID: 698259985}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 0}
@@ -4044,10 +4061,10 @@ RectTransform:
   - {fileID: 723269753}
   m_Father: {fileID: 1364011829}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
-  m_AnchorMin: {x: 0.5, y: 0.5}
-  m_AnchorMax: {x: 0.5, y: 0.5}
+  m_AnchorMin: {x: 0, y: 0}
+  m_AnchorMax: {x: 1, y: 1}
   m_AnchoredPosition: {x: 0, y: 0}
-  m_SizeDelta: {x: 100, y: 100}
+  m_SizeDelta: {x: 0, y: 0}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &1832743370
 MonoBehaviour:
@@ -4061,19 +4078,21 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 3925a66a2a251d54d90677e670229966, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::MobileControls
+  useAimJoystick: 1
   moveInput: {x: 0, y: 0}
   aimInput: {x: 0, y: 0}
   isFiring: 0
   dashTriggered: 0
   controlsContainer: {fileID: 1832743368}
-  showInEditorForTesting: 0
+  showInEditorForTesting: 1
   moveBase: {fileID: 98971013}
   moveHandle: {fileID: 327606652}
-  moveRange: 60
+  moveRange: 90
+  aimJoystickRoot: {fileID: 1332937706}
   aimBase: {fileID: 1332937707}
   aimHandle: {fileID: 806033184}
-  aimRange: 60
-  fireDeadzone: 0.25
+  aimRange: 90
+  fireDeadzone: 0.15
 --- !u!1 &1852377862
 GameObject:
   m_ObjectHideFlags: 0

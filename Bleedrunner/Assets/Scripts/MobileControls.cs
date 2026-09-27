@@ -1,11 +1,14 @@
 using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.InputSystem;
-using UnityEngine.UI;
 
 public class MobileControls : MonoBehaviour
 {
     public static MobileControls Instance;
+
+    [Header("Aim Mode Selector")]
+    [Tooltip("CHECKED = Dual-Stick (Virtual Right Stick).\nUNCHECKED = Tap-To-Aim (Tap anywhere on screen to shoot).")]
+    public bool useAimJoystick = false;
 
     [Header("Input Telemetry (Read-only)")]
     public Vector2 moveInput;
@@ -14,26 +17,28 @@ public class MobileControls : MonoBehaviour
     public bool dashTriggered;
 
     [Header("Auto-Detection Settings")]
-    [Tooltip("The parent GameObject holding the joysticks & buttons (MobileControlsPanel).")]
     public GameObject controlsContainer;
-    [Tooltip("If checked, keeps mobile controls visible inside the Unity Editor so you can test with mouse clicks.")]
     public bool showInEditorForTesting = true;
 
     [Header("Left Move Joystick UI")]
     public RectTransform moveBase;
     public RectTransform moveHandle;
-    public float moveRange = 60f;
+    public float moveRange = 90f;
 
-    [Header("Right Aim / Fire Joystick UI")]
+    [Header("Right Aim Joystick UI (Optional / Toggleable)")]
+    [Tooltip("Drag the AimBase GameObject here so it can be enabled/disabled dynamically.")]
+    public GameObject aimJoystickRoot;
     public RectTransform aimBase;
     public RectTransform aimHandle;
-    public float aimRange = 60f;
-    [Range(0.1f, 0.9f)] public float fireDeadzone = 0.25f;
+    public float aimRange = 90f;
+    [Range(0.05f, 0.5f)] public float fireDeadzone = 0.15f;
 
     private int moveFingerId = -999;
     private int aimFingerId = -999;
-    private Vector2 moveCenter;
-    private Vector2 aimCenter;
+    private Canvas parentCanvas;
+    private Camera cam;
+    private Plane groundPlane;
+    private Transform playerTransform;
     private bool isMobileUser = false;
 
     void Awake()
@@ -41,13 +46,35 @@ public class MobileControls : MonoBehaviour
         if (Instance == null) Instance = this;
         else Destroy(gameObject);
 
+        parentCanvas = GetComponentInParent<Canvas>();
+        cam = Camera.main;
+        groundPlane = new Plane(Vector3.up, new Vector3(0f, 0.6f, 0f));
+
         DetectDeviceAndSetVisibility();
+        ApplyAimModeVisibility();
     }
 
     void Start()
     {
-        if (moveBase != null) moveCenter = moveBase.position;
-        if (aimBase != null) aimCenter = aimBase.position;
+        CachePlayer();
+    }
+
+    void OnValidate()
+    {
+        // Updates joystick visibility live inside the Unity Editor when clicking the checkbox
+        ApplyAimModeVisibility();
+    }
+
+    public void ApplyAimModeVisibility()
+    {
+        if (aimJoystickRoot != null)
+        {
+            aimJoystickRoot.SetActive(useAimJoystick);
+        }
+        else if (aimBase != null)
+        {
+            aimBase.gameObject.SetActive(useAimJoystick);
+        }
     }
 
     void DetectDeviceAndSetVisibility()
@@ -55,7 +82,6 @@ public class MobileControls : MonoBehaviour
 #if UNITY_EDITOR
         isMobileUser = showInEditorForTesting;
 #else
-        // Unity WebGL detects mobile browsers (iOS / Android) via browser user agent
         isMobileUser = Application.isMobilePlatform || SystemInfo.deviceType == DeviceType.Handheld;
 #endif
 
@@ -68,7 +94,6 @@ public class MobileControls : MonoBehaviour
     void Update()
     {
 #if !UNITY_EDITOR
-        // Fail-safe for iPads / tablets: If hidden but screen receives a touch, activate controls
         if (controlsContainer != null && !controlsContainer.activeSelf)
         {
             if (Touchscreen.current != null && Touchscreen.current.touches.Count > 0)
@@ -81,30 +106,160 @@ public class MobileControls : MonoBehaviour
 
         if (!isMobileUser) return;
 
-        // Keep anchor positions aligned if phone orientation flips
-        if (moveBase != null) moveCenter = moveBase.position;
-        if (aimBase != null) aimCenter = aimBase.position;
+        // If joystick mode is disabled, evaluate screen touches for tap-aiming
+        if (!useAimJoystick)
+        {
+            HandleTapToAimAndFire();
+        }
     }
 
-    // --- LEFT JOYSTICK (MOVEMENT) ---
+    void CachePlayer()
+    {
+        if (playerTransform == null)
+        {
+            PlayerController25D p = FindFirstObjectByType<PlayerController25D>();
+            if (p != null) playerTransform = p.transform;
+        }
+    }
+
+    // ==========================================
+    // MODE A: TAP-TO-AIM & FIRE LOGIC
+    // ==========================================
+    void HandleTapToAimAndFire()
+    {
+        isFiring = false;
+
+        if (Touchscreen.current == null) return;
+        if (playerTransform == null)
+        {
+            CachePlayer();
+            if (playerTransform == null) return;
+        }
+
+        Camera eventCam = (parentCanvas != null && parentCanvas.renderMode == RenderMode.ScreenSpaceOverlay) ? null : parentCanvas.worldCamera;
+        var touches = Touchscreen.current.touches;
+
+        for (int i = 0; i < touches.Count; i++)
+        {
+            var touch = touches[i];
+            if (!touch.press.isPressed) continue;
+
+            int touchId = touch.touchId.ReadValue();
+
+            // 1. IGNORE THE MOVEMENT FINGER (Even if it drags miles outside the joystick circle)
+            if (touchId == moveFingerId) continue;
+
+            Vector2 touchPos = touch.position.ReadValue();
+
+            // 2. LEFT-SCREEN GUARD: The left 40% of the screen is strictly reserved for movement/kiting
+            if (touchPos.x < Screen.width * 0.40f) continue;
+
+            // 3. Ignore touches inside the moveBase rect itself
+            if (moveBase != null && RectTransformUtility.RectangleContainsScreenPoint(moveBase, touchPos, eventCam))
+            {
+                continue;
+            }
+
+            // 4. Ignore touches on UI elements/buttons (like Dash)
+            if (EventSystem.current != null && EventSystem.current.IsPointerOverGameObject(touchId))
+            {
+                continue;
+            }
+
+            // 5. Cast ray to floor plane and shoot
+            Ray ray = cam.ScreenPointToRay(touchPos);
+            if (groundPlane.Raycast(ray, out float enter))
+            {
+                Vector3 worldHit = ray.GetPoint(enter);
+                Vector3 dir = worldHit - playerTransform.position;
+                dir.y = 0f;
+
+                if (dir.sqrMagnitude > 0.05f)
+                {
+                    dir.Normalize();
+                    aimInput = new Vector2(dir.x, dir.z);
+                    isFiring = true;
+                    break; // Right-hand aim touch acquired
+                }
+            }
+        }
+    }
+
+    // ==========================================
+    // MODE B: VIRTUAL RIGHT JOYSTICK LOGIC
+    // ==========================================
+    public void OnAimPointerDown(BaseEventData data)
+    {
+        if (!useAimJoystick) return;
+        PointerEventData pData = (PointerEventData)data;
+        aimFingerId = pData.pointerId;
+        UpdateAimStick(pData);
+    }
+
+    public void OnAimDrag(BaseEventData data)
+    {
+        if (!useAimJoystick) return;
+        PointerEventData pData = (PointerEventData)data;
+        if (pData.pointerId != aimFingerId) return;
+        UpdateAimStick(pData);
+    }
+
+    void UpdateAimStick(PointerEventData pData)
+    {
+        if (aimBase == null) return;
+        Camera eventCam = (parentCanvas != null && parentCanvas.renderMode == RenderMode.ScreenSpaceOverlay) ? null : parentCanvas.worldCamera;
+
+        if (RectTransformUtility.ScreenPointToLocalPointInRectangle(aimBase, pData.position, eventCam, out Vector2 localPoint))
+        {
+            aimInput = Vector2.ClampMagnitude(localPoint / aimRange, 1f);
+
+            if (aimHandle != null)
+            {
+                aimHandle.anchoredPosition = aimInput * aimRange;
+            }
+
+            isFiring = aimInput.magnitude > fireDeadzone;
+        }
+    }
+
+    public void OnAimPointerUp(BaseEventData data)
+    {
+        if (!useAimJoystick) return;
+        PointerEventData pData = (PointerEventData)data;
+        if (pData.pointerId != aimFingerId) return;
+
+        aimFingerId = -999;
+        aimInput = Vector2.zero;
+        isFiring = false;
+        if (aimHandle != null) aimHandle.anchoredPosition = Vector2.zero;
+    }
+
+    // ==========================================
+    // SHARED: LEFT MOVEMENT JOYSTICK
+    // ==========================================
     public void OnMovePointerDown(BaseEventData data)
     {
         PointerEventData pData = (PointerEventData)data;
         moveFingerId = pData.pointerId;
-        OnMoveDrag(data);
+        UpdateMoveStick(pData);
     }
 
     public void OnMoveDrag(BaseEventData data)
     {
         PointerEventData pData = (PointerEventData)data;
         if (pData.pointerId != moveFingerId) return;
+        UpdateMoveStick(pData);
+    }
 
-        Vector2 direction = pData.position - moveCenter;
-        moveInput = Vector2.ClampMagnitude(direction / moveRange, 1f);
+    void UpdateMoveStick(PointerEventData pData)
+    {
+        if (moveBase == null) return;
+        Camera eventCam = (parentCanvas != null && parentCanvas.renderMode == RenderMode.ScreenSpaceOverlay) ? null : parentCanvas.worldCamera;
 
-        if (moveHandle != null)
+        if (RectTransformUtility.ScreenPointToLocalPointInRectangle(moveBase, pData.position, eventCam, out Vector2 localPoint))
         {
-            moveHandle.anchoredPosition = moveInput * moveRange;
+            moveInput = Vector2.ClampMagnitude(localPoint / moveRange, 1f);
+            if (moveHandle != null) moveHandle.anchoredPosition = moveInput * moveRange;
         }
     }
 
@@ -118,46 +273,10 @@ public class MobileControls : MonoBehaviour
         if (moveHandle != null) moveHandle.anchoredPosition = Vector2.zero;
     }
 
-    // --- RIGHT JOYSTICK (AIM & FIRE) ---
-    public void OnAimPointerDown(BaseEventData data)
-    {
-        PointerEventData pData = (PointerEventData)data;
-        aimFingerId = pData.pointerId;
-        OnAimDrag(data);
-    }
-
-    public void OnAimDrag(BaseEventData data)
-    {
-        PointerEventData pData = (PointerEventData)data;
-        if (pData.pointerId != aimFingerId) return;
-
-        Vector2 direction = pData.position - aimCenter;
-        aimInput = Vector2.ClampMagnitude(direction / aimRange, 1f);
-
-        if (aimHandle != null)
-        {
-            aimHandle.anchoredPosition = aimInput * aimRange;
-        }
-
-        isFiring = aimInput.magnitude > fireDeadzone;
-    }
-
-    public void OnAimPointerUp(BaseEventData data)
-    {
-        PointerEventData pData = (PointerEventData)data;
-        if (pData.pointerId != aimFingerId) return;
-
-        aimFingerId = -999;
-        aimInput = Vector2.zero;
-        isFiring = false;
-        if (aimHandle != null) aimHandle.anchoredPosition = Vector2.zero;
-    }
-
-    // --- DASH BUTTON ---
-    public void OnDashButtonPressed()
-    {
-        dashTriggered = true;
-    }
+    // ==========================================
+    // SHARED: DASH BUTTON
+    // ==========================================
+    public void OnDashButtonPressed() => dashTriggered = true;
 
     public bool ConsumeDash()
     {
