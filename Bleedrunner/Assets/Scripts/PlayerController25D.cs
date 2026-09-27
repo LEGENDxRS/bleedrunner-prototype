@@ -1,12 +1,17 @@
 using System.Collections;
 using UnityEngine;
+using UnityEngine.InputSystem;
 
 [RequireComponent(typeof(Rigidbody))]
 public class PlayerController25D : MonoBehaviour
 {
     [Header("Movement")]
     public float moveSpeed = 10f;
+
+    [Header("Aiming Polish")]
     public bool stabilizeAimDuringShake = true;
+    [Tooltip("Optional: Drag your 'Visor' child object here for instant 0ms mouse aiming without affecting body physics.")]
+    public Transform visualAimHolder;
 
     [Header("Dash Settings")]
     public bool canDash = true;
@@ -17,9 +22,7 @@ public class PlayerController25D : MonoBehaviour
 
     [Header("Siphon Dash Perk Tunables")]
     public bool hasSiphonDash = false;
-    [Tooltip("Radius around the player checked for enemies when dashing")]
     public float siphonRadius = 1.2f;
-    [Tooltip("Seconds granted per enemy phased through")]
     public float siphonTimeGain = 0.5f;
 
     private Rigidbody rb;
@@ -29,12 +32,28 @@ public class PlayerController25D : MonoBehaviour
     private Quaternion targetRotation;
     private float nextDashTime;
 
+    // Baseline stat memory
+    private float baseMoveSpeed;
+    private bool baseCanDash;
+    private bool baseHasSiphonDash;
+    private float baseSiphonTimeGain;
+
     void Awake()
     {
         rb = GetComponent<Rigidbody>();
+
+        rb.interpolation = RigidbodyInterpolation.Interpolate;
+        rb.constraints = RigidbodyConstraints.FreezePositionY | RigidbodyConstraints.FreezeRotationX | RigidbodyConstraints.FreezeRotationZ;
+
         cam = Camera.main;
         aimPlane = new Plane(Vector3.up, new Vector3(0f, 1f, 0f));
         targetRotation = transform.rotation;
+
+        // Remember initial Inspector stats
+        baseMoveSpeed = moveSpeed;
+        baseCanDash = canDash;
+        baseHasSiphonDash = hasSiphonDash;
+        baseSiphonTimeGain = siphonTimeGain;
     }
 
     void Update()
@@ -45,30 +64,46 @@ public class PlayerController25D : MonoBehaviour
             return;
         }
 
-        float x = Input.GetAxisRaw("Horizontal");
-        float z = Input.GetAxisRaw("Vertical");
-        moveInput = new Vector3(x, 0f, z).normalized;
+        Vector2 inputDir = Vector2.zero;
+        if (Keyboard.current != null)
+        {
+            if (Keyboard.current.wKey.isPressed || Keyboard.current.upArrowKey.isPressed) inputDir.y += 1f;
+            if (Keyboard.current.sKey.isPressed || Keyboard.current.downArrowKey.isPressed) inputDir.y -= 1f;
+            if (Keyboard.current.aKey.isPressed || Keyboard.current.leftArrowKey.isPressed) inputDir.x -= 1f;
+            if (Keyboard.current.dKey.isPressed || Keyboard.current.rightArrowKey.isPressed) inputDir.x += 1f;
+        }
+        moveInput = new Vector3(inputDir.x, 0f, inputDir.y).normalized;
 
-        if (canDash && Input.GetKeyDown(KeyCode.Space) && Time.time >= nextDashTime && !isDashing)
+        if (canDash && Keyboard.current != null && Keyboard.current.spaceKey.wasPressedThisFrame && Time.time >= nextDashTime && !isDashing)
         {
             StartCoroutine(PerformDash());
         }
 
-        Ray ray = cam.ScreenPointToRay(Input.mousePosition);
-        if (stabilizeAimDuringShake && CameraFollow.Instance != null)
+        if (Mouse.current != null && cam != null)
         {
-            ray.origin -= CameraFollow.Instance.shakeOffset;
-        }
+            Vector2 mouseScreenPos = Mouse.current.position.ReadValue();
+            Ray ray = cam.ScreenPointToRay(mouseScreenPos);
 
-        if (aimPlane.Raycast(ray, out float enter))
-        {
-            Vector3 targetPoint = ray.GetPoint(enter);
-            Vector3 lookDirection = targetPoint - transform.position;
-            lookDirection.y = 0f;
-
-            if (lookDirection.sqrMagnitude > 0.001f)
+            if (stabilizeAimDuringShake && CameraFollow.Instance != null)
             {
-                targetRotation = Quaternion.LookRotation(lookDirection);
+                ray.origin -= CameraFollow.Instance.shakeOffset;
+            }
+
+            if (aimPlane.Raycast(ray, out float enter))
+            {
+                Vector3 targetPoint = ray.GetPoint(enter);
+                Vector3 lookDirection = targetPoint - transform.position;
+                lookDirection.y = 0f;
+
+                if (lookDirection.sqrMagnitude > 0.001f)
+                {
+                    targetRotation = Quaternion.LookRotation(lookDirection);
+
+                    if (visualAimHolder != null)
+                    {
+                        visualAimHolder.rotation = targetRotation;
+                    }
+                }
             }
         }
     }
@@ -81,10 +116,15 @@ public class PlayerController25D : MonoBehaviour
             return;
         }
 
-        if (isDashing) return;
+        if (!isDashing)
+        {
+            rb.linearVelocity = moveInput * moveSpeed;
+        }
 
-        rb.linearVelocity = moveInput * moveSpeed;
-        rb.MoveRotation(targetRotation);
+        if (visualAimHolder == null)
+        {
+            rb.MoveRotation(targetRotation);
+        }
     }
 
     IEnumerator PerformDash()
@@ -120,6 +160,15 @@ public class PlayerController25D : MonoBehaviour
         }
 
         rb.linearVelocity = Vector3.zero;
+        isDashing = false;
+    }
+
+    public void ResetPlayerStats()
+    {
+        moveSpeed = baseMoveSpeed;
+        canDash = baseCanDash;
+        hasSiphonDash = baseHasSiphonDash;
+        siphonTimeGain = baseSiphonTimeGain;
         isDashing = false;
     }
 

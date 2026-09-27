@@ -1,4 +1,5 @@
 using UnityEngine;
+using UnityEngine.InputSystem;
 using TMPro;
 
 public class TimeManager : MonoBehaviour
@@ -13,9 +14,7 @@ public class TimeManager : MonoBehaviour
     public bool isPaused = false;
 
     [Header("Warning & Visual Settings")]
-    [Tooltip("Time in seconds when the timer display begins flashing")]
     public float criticalTimeThreshold = 2.0f;
-    [Tooltip("Flash rate speed when under the critical threshold")]
     public float warningFlashSpeed = 8.0f;
     public Color normalTimerColor = new Color(1f, 0.25f, 0.2f);
     public Color criticalColorA = Color.red;
@@ -32,12 +31,14 @@ public class TimeManager : MonoBehaviour
 
     private PlayerController25D player;
     private Vector3 playerStartPos;
+    private float initialMaxTime;
 
     void Awake()
     {
         if (Instance == null) Instance = this;
         else Destroy(gameObject);
 
+        initialMaxTime = maxTime;
         currentTime = maxTime;
     }
 
@@ -51,7 +52,7 @@ public class TimeManager : MonoBehaviour
     {
         if (isDead)
         {
-            if (Input.GetKeyDown(KeyCode.R))
+            if (Keyboard.current != null && Keyboard.current.rKey.wasPressedThisFrame)
             {
                 SoftResetRun();
             }
@@ -62,7 +63,6 @@ public class TimeManager : MonoBehaviour
 
         currentTime -= Time.deltaTime * timerDrainRate;
 
-        // Sample kills per second for AI Director tension calculation
         velocitySampleTimer += Time.deltaTime;
         if (velocitySampleTimer >= 1.0f)
         {
@@ -126,20 +126,39 @@ public class TimeManager : MonoBehaviour
 
     public void SoftResetRun()
     {
+        // 1. Purge remaining enemies
         EnemyTarget[] activeEnemies = FindObjectsByType<EnemyTarget>(FindObjectsSortMode.None);
         for (int i = 0; i < activeEnemies.Length; i++)
         {
             Destroy(activeEnemies[i].gameObject);
         }
 
+        // 2. Reset Player Position and Baseline Movement Stats
         if (player != null)
         {
             player.transform.position = playerStartPos;
             player.enabled = true;
+            player.ResetPlayerStats();
+
             Rigidbody rb = player.GetComponent<Rigidbody>();
             if (rb != null) rb.linearVelocity = Vector3.zero;
         }
 
+        // 3. Reset Weapon Stats (Piercing, Fire Rate)
+        PlayerShooting shooting = FindFirstObjectByType<PlayerShooting>();
+        if (shooting != null)
+        {
+            shooting.ResetShootingStats();
+        }
+
+        // 4. Wipe Perk Pool History
+        if (PerkManager.Instance != null)
+        {
+            PerkManager.Instance.ResetPerks();
+        }
+
+        // 5. Restore Timer & Chamber Progression
+        maxTime = initialMaxTime;
         currentTime = maxTime;
         timerDrainRate = 1.0f;
         isDead = false;
@@ -148,11 +167,11 @@ public class TimeManager : MonoBehaviour
         killVelocity = 0f;
         velocitySampleTimer = 0f;
 
-        if (gameOverUI != null) gameOverUI.SetActive(false);
-
         if (ChamberManager.Instance != null)
         {
             ChamberManager.Instance.ResetProgression();
         }
+
+        if (gameOverUI != null) gameOverUI.SetActive(false);
     }
 }

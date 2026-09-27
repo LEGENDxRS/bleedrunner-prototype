@@ -16,15 +16,10 @@ public class PerkData
     public bool isUnique = true;
 
     [Header("Stat Modifiers (0 or 1 = unchanged)")]
-    [Tooltip("1.0 = normal, 1.35 = +35% move speed")]
     public float moveSpeedMultiplier = 1.0f;
-    [Tooltip("1.0 = normal, 0.6 = shoots 40% faster")]
     public float fireRateMultiplier = 1.0f;
-    [Tooltip("Directly adds to maximum adrenaline clock capacity (e.g. +2.0s)")]
     public float extraMaxClockTime = 0f;
-    [Tooltip("Increases time gained on enemy kills (e.g. +0.5s)")]
     public float extraTimePerKill = 0f;
-    [Tooltip("Clock drain speed multiplier (1.0 = normal, 1.25 = 25% faster drain)")]
     public float clockDrainMultiplier = 1.0f;
 
     [Header("Special Abilities")]
@@ -39,7 +34,6 @@ public class PerkManager : MonoBehaviour
     public static PerkManager Instance;
 
     [Header("Debug Controls")]
-    [Tooltip("Enable to force a specific perk to appear in the draft for testing")]
     public bool forceDebugPerk = false;
     public string debugPerkIDToForce = "piercing_slugs";
 
@@ -50,7 +44,7 @@ public class PerkManager : MonoBehaviour
             perkID = "piercing_slugs",
             perkName = "Piercing Slugs",
             description = "Projectiles drill through all targets in a direct line.",
-            cardColor = new Color(0.9f, 0.4f, 0.1f), // Orange (Rare)
+            cardColor = new Color(0.9f, 0.4f, 0.1f),
             dropWeight = 20,
             isUnique = true,
             unlocksPiercing = true
@@ -59,7 +53,7 @@ public class PerkManager : MonoBehaviour
             perkID = "siphon_dash",
             perkName = "Siphon Dash",
             description = "Unlocks Spacebar Dash. Dashing through enemies grants +0.5s time.",
-            cardColor = new Color(0.2f, 0.8f, 1f), // Cyan (Uncommon)
+            cardColor = new Color(0.2f, 0.8f, 1f),
             dropWeight = 35,
             isUnique = true,
             unlocksDash = true,
@@ -70,7 +64,7 @@ public class PerkManager : MonoBehaviour
             perkID = "rapid_trigger",
             perkName = "Rapid Trigger",
             description = "Increases weapon fire rate by 40%.",
-            cardColor = Color.white, // Common
+            cardColor = Color.white,
             dropWeight = 70,
             isUnique = false,
             fireRateMultiplier = 0.6f
@@ -79,7 +73,7 @@ public class PerkManager : MonoBehaviour
             perkID = "adrenaline_surge",
             perkName = "Adrenaline Surge",
             description = "+2.0s to Max Timer capacity and immediately restores the clock.",
-            cardColor = new Color(1f, 0.85f, 0.2f), // Gold (Legendary)
+            cardColor = new Color(1f, 0.85f, 0.2f),
             dropWeight = 10,
             isUnique = true,
             extraMaxClockTime = 2.0f
@@ -88,7 +82,7 @@ public class PerkManager : MonoBehaviour
             perkID = "glass_turbine",
             perkName = "Glass Turbine",
             description = "+35% Movement Speed, but clock drains 25% faster.",
-            cardColor = new Color(0.8f, 0.2f, 0.2f), // Red (Risk)
+            cardColor = new Color(0.8f, 0.2f, 0.2f),
             dropWeight = 40,
             isUnique = true,
             moveSpeedMultiplier = 1.35f,
@@ -107,7 +101,6 @@ public class PerkManager : MonoBehaviour
 
     public List<PerkData> GetRandomPerks(int count = 3)
     {
-        // Filter out unique perks that were already drafted
         List<PerkData> availablePool = new List<PerkData>();
         for (int i = 0; i < perkDatabase.Count; i++)
         {
@@ -120,7 +113,6 @@ public class PerkManager : MonoBehaviour
 
         List<PerkData> selected = new List<PerkData>();
 
-        // Optional debug force check
         if (forceDebugPerk)
         {
             PerkData forced = availablePool.Find(p => p.perkID == debugPerkIDToForce);
@@ -131,7 +123,6 @@ public class PerkManager : MonoBehaviour
             }
         }
 
-        // Weighted lottery draw without replacement
         while (selected.Count < count && availablePool.Count > 0)
         {
             int totalWeight = 0;
@@ -170,19 +161,16 @@ public class PerkManager : MonoBehaviour
         PlayerController25D player = FindFirstObjectByType<PlayerController25D>();
         PlayerShooting shooting = FindFirstObjectByType<PlayerShooting>();
 
-        // Apply Speed
         if (player != null && perk.moveSpeedMultiplier != 1.0f)
         {
             player.moveSpeed *= perk.moveSpeedMultiplier;
         }
 
-        // Apply Fire Rate
         if (shooting != null && perk.fireRateMultiplier != 1.0f)
         {
             shooting.fireRate *= perk.fireRateMultiplier;
         }
 
-        // Apply Dash / Siphon
         if (player != null)
         {
             if (perk.unlocksDash) player.canDash = true;
@@ -193,13 +181,11 @@ public class PerkManager : MonoBehaviour
             }
         }
 
-        // Apply Piercing
         if (shooting != null && perk.unlocksPiercing)
         {
             shooting.hasPiercingSlugs = true;
         }
 
-        // Apply Adrenaline Clock modifiers
         if (TimeManager.Instance != null)
         {
             if (perk.extraMaxClockTime > 0f)
@@ -214,7 +200,6 @@ public class PerkManager : MonoBehaviour
             }
         }
 
-        // Apply Enemy kill rewards
         if (perk.extraTimePerKill > 0f)
         {
             EnemyTarget[] enemies = FindObjectsByType<EnemyTarget>(FindObjectsSortMode.None);
@@ -224,10 +209,10 @@ public class PerkManager : MonoBehaviour
             }
         }
 
-        Debug.Log($"<color=green>[PerkManager]</color> Successfully applied: {perk.perkName}");
+        Debug.Log($"<color=green>[PerkManager]</color> Applied: {perk.perkName}");
     }
 
-    public void ResetDraftHistory()
+    public void ResetPerks()
     {
         draftedPerkIDs.Clear();
     }

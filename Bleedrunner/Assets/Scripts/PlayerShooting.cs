@@ -1,6 +1,7 @@
 using System;
 using System.Collections;
 using UnityEngine;
+using UnityEngine.InputSystem;
 
 public class PlayerShooting : MonoBehaviour
 {
@@ -25,9 +26,12 @@ public class PlayerShooting : MonoBehaviour
 
     private float nextFireTime;
     private Coroutine tracerRoutine;
+    private float baseFireRate;
 
     void Awake()
     {
+        baseFireRate = fireRate;
+
         if (tracer != null)
         {
             tracer.useWorldSpace = true;
@@ -39,7 +43,9 @@ public class PlayerShooting : MonoBehaviour
     {
         if (TimeManager.Instance != null && (TimeManager.Instance.isDead || TimeManager.Instance.isPaused)) return;
 
-        if (Input.GetButton("Fire1") && Time.time >= nextFireTime)
+        bool isFiring = Mouse.current != null && Mouse.current.leftButton.isPressed;
+
+        if (isFiring && Time.time >= nextFireTime)
         {
             nextFireTime = Time.time + fireRate;
             Shoot();
@@ -49,12 +55,11 @@ public class PlayerShooting : MonoBehaviour
     void Shoot()
     {
         Vector3 origin = firePoint != null ? firePoint.position : transform.position;
-        Vector3 shootDir = transform.forward;
+        Vector3 shootDir = firePoint != null ? firePoint.forward : transform.forward;
         Vector3 endPoint = origin + shootDir * range;
 
         if (hasPiercingSlugs)
         {
-            // Pierce through all aligned targets
             RaycastHit[] hits = Physics.RaycastAll(origin, shootDir, range, hitLayers);
             Array.Sort(hits, (a, b) => a.distance.CompareTo(b.distance));
 
@@ -69,7 +74,6 @@ public class PlayerShooting : MonoBehaviour
         }
         else
         {
-            // Standard single-hit hitscan
             if (Physics.Raycast(origin, shootDir, out RaycastHit hit, range, hitLayers))
             {
                 endPoint = hit.point;
@@ -105,5 +109,11 @@ public class PlayerShooting : MonoBehaviour
 
         tracer.enabled = false;
         tracerRoutine = null;
+    }
+
+    public void ResetShootingStats()
+    {
+        fireRate = baseFireRate;
+        hasPiercingSlugs = false;
     }
 }

@@ -482,6 +482,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::PlayerController25D
   moveSpeed: 10
   stabilizeAimDuringShake: 1
+  visualAimHolder: {fileID: 1120250721}
   canDash: 1
   dashSpeed: 26
   dashDuration: 0.14
@@ -516,7 +517,7 @@ Rigidbody:
   m_IsKinematic: 0
   m_Interpolate: 1
   m_Constraints: 116
-  m_CollisionDetection: 0
+  m_CollisionDetection: 1
 --- !u!114 &169203813
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -549,7 +550,7 @@ CapsuleCollider:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 169203809}
-  m_Material: {fileID: 0}
+  m_Material: {fileID: 13400000, guid: a6ee36538c5521a46b9e2be6b90d1460, type: 2}
   m_IncludeLayers:
     serializedVersion: 2
     m_Bits: 0
@@ -2523,7 +2524,6 @@ GameObject:
   - component: {fileID: 1120250721}
   - component: {fileID: 1120250724}
   - component: {fileID: 1120250723}
-  - component: {fileID: 1120250722}
   m_Layer: 0
   m_Name: Visor
   m_TagString: Untagged
@@ -2547,27 +2547,6 @@ Transform:
   - {fileID: 190146180}
   m_Father: {fileID: 169203817}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!65 &1120250722
-BoxCollider:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1120250720}
-  m_Material: {fileID: 0}
-  m_IncludeLayers:
-    serializedVersion: 2
-    m_Bits: 0
-  m_ExcludeLayers:
-    serializedVersion: 2
-    m_Bits: 0
-  m_LayerOverridePriority: 0
-  m_IsTrigger: 0
-  m_ProvidesContacts: 0
-  m_Enabled: 1
-  serializedVersion: 3
-  m_Size: {x: 1, y: 1, z: 1}
-  m_Center: {x: 0, y: 0, z: 0}
 --- !u!23 &1120250723
 MeshRenderer:
   m_ObjectHideFlags: 0
