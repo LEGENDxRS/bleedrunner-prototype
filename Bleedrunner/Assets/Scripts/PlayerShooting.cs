@@ -9,9 +9,8 @@ public class PlayerShooting : MonoBehaviour
     public Transform firePoint;
     public float fireRate = 0.15f;
     public float range = 35f;
-    [Tooltip("Radius of the bullet beam. 0.2 makes hit detection forgiving and crisp.")]
     public float projectileRadius = 0.2f;
-    public LayerMask hitLayers = ~0; // Defaults to Everything
+    public LayerMask hitLayers = ~0;
 
     [Header("Perk Upgrades")]
     public bool hasPiercingSlugs = false;
@@ -42,20 +41,18 @@ public class PlayerShooting : MonoBehaviour
             tracer.positionCount = 2;
         }
 
-        // Auto-fix LayerMask if Inspector defaulted to 'Nothing'
-        if (hitLayers.value == 0)
-        {
-            hitLayers = ~0;
-        }
+        if (hitLayers.value == 0) hitLayers = ~0;
     }
 
     void Update()
     {
         if (TimeManager.Instance != null && (TimeManager.Instance.isDead || TimeManager.Instance.isPaused)) return;
 
-        bool isFiring = Mouse.current != null && Mouse.current.leftButton.isPressed;
+        // PC Mouse Fire OR Mobile Joystick Fire
+        bool pcFiring = Mouse.current != null && Mouse.current.leftButton.isPressed;
+        bool mobileFiring = MobileControls.Instance != null && MobileControls.Instance.isFiring;
 
-        if (isFiring && Time.time >= nextFireTime)
+        if ((pcFiring || mobileFiring) && Time.time >= nextFireTime)
         {
             nextFireTime = Time.time + fireRate;
             Shoot();
@@ -65,41 +62,30 @@ public class PlayerShooting : MonoBehaviour
     void Shoot()
     {
         Vector3 origin = firePoint != null ? firePoint.position : transform.position;
-        // Lock shooting height to chest level so angled gun models don't shoot into the floor
         origin.y = 0.6f;
 
         Vector3 shootDir = transform.forward;
-        if (firePoint != null)
-        {
-            shootDir = firePoint.forward;
-        }
+        if (firePoint != null) shootDir = firePoint.forward;
         shootDir.y = 0f;
         shootDir.Normalize();
 
         Vector3 endPoint = origin + (shootDir * range);
 
-        // SphereCastAll detects enemies reliably without missing thin hitboxes
         RaycastHit[] hits = Physics.SphereCastAll(origin, projectileRadius, shootDir, range, hitLayers);
         Array.Sort(hits, (a, b) => a.distance.CompareTo(b.distance));
-
-        bool hitWall = false;
 
         for (int i = 0; i < hits.Length; i++)
         {
             RaycastHit hit = hits[i];
-
-            // Ignore hits on the player's own body colliders
             if (hit.collider == playerCol || hit.collider.CompareTag("Player") || hit.collider.transform.IsChildOf(transform))
             {
                 continue;
             }
 
-            // Check if bullet hit an enemy
             EnemyTarget enemy = hit.collider.GetComponent<EnemyTarget>();
             if (enemy != null)
             {
                 enemy.TakeDamage(1);
-
                 if (!hasPiercingSlugs)
                 {
                     endPoint = hit.point;
@@ -108,9 +94,7 @@ public class PlayerShooting : MonoBehaviour
             }
             else
             {
-                // Bullet hit a wall or obstacle - stop line here
                 endPoint = hit.point;
-                hitWall = true;
                 break;
             }
         }

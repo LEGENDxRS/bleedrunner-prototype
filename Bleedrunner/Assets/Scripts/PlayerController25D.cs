@@ -10,7 +10,6 @@ public class PlayerController25D : MonoBehaviour
 
     [Header("Aiming Polish")]
     public bool stabilizeAimDuringShake = true;
-    [Tooltip("Optional: Drag your 'Visor' child object here for instant 0ms mouse aiming without affecting body physics.")]
     public Transform visualAimHolder;
 
     [Header("Dash Settings")]
@@ -32,7 +31,6 @@ public class PlayerController25D : MonoBehaviour
     private Quaternion targetRotation;
     private float nextDashTime;
 
-    // Baseline stat memory
     private float baseMoveSpeed;
     private bool baseCanDash;
     private bool baseHasSiphonDash;
@@ -41,7 +39,6 @@ public class PlayerController25D : MonoBehaviour
     void Awake()
     {
         rb = GetComponent<Rigidbody>();
-
         rb.interpolation = RigidbodyInterpolation.Interpolate;
         rb.constraints = RigidbodyConstraints.FreezePositionY | RigidbodyConstraints.FreezeRotationX | RigidbodyConstraints.FreezeRotationZ;
 
@@ -49,7 +46,6 @@ public class PlayerController25D : MonoBehaviour
         aimPlane = new Plane(Vector3.up, new Vector3(0f, 1f, 0f));
         targetRotation = transform.rotation;
 
-        // Remember initial Inspector stats
         baseMoveSpeed = moveSpeed;
         baseCanDash = canDash;
         baseHasSiphonDash = hasSiphonDash;
@@ -64,6 +60,7 @@ public class PlayerController25D : MonoBehaviour
             return;
         }
 
+        // --- 1. MOVEMENT INPUT (PC WASD + MOBILE JOYSTICK) ---
         Vector2 inputDir = Vector2.zero;
         if (Keyboard.current != null)
         {
@@ -72,14 +69,35 @@ public class PlayerController25D : MonoBehaviour
             if (Keyboard.current.aKey.isPressed || Keyboard.current.leftArrowKey.isPressed) inputDir.x -= 1f;
             if (Keyboard.current.dKey.isPressed || Keyboard.current.rightArrowKey.isPressed) inputDir.x += 1f;
         }
+
+        // Merge Mobile Joystick
+        if (MobileControls.Instance != null && MobileControls.Instance.moveInput.sqrMagnitude > 0.01f)
+        {
+            inputDir = MobileControls.Instance.moveInput;
+        }
         moveInput = new Vector3(inputDir.x, 0f, inputDir.y).normalized;
 
-        if (canDash && Keyboard.current != null && Keyboard.current.spaceKey.wasPressedThisFrame && Time.time >= nextDashTime && !isDashing)
+        // --- 2. DASH INPUT (PC SPACEBAR + MOBILE BUTTON) ---
+        bool dashKey = Keyboard.current != null && Keyboard.current.spaceKey.wasPressedThisFrame;
+        bool mobileDash = MobileControls.Instance != null && MobileControls.Instance.ConsumeDash();
+
+        if (canDash && (dashKey || mobileDash) && Time.time >= nextDashTime && !isDashing)
         {
             StartCoroutine(PerformDash());
         }
 
-        if (Mouse.current != null && cam != null)
+        // --- 3. AIMING INPUT (MOUSE OR MOBILE RIGHT JOYSTICK) ---
+        bool handledMobileAim = false;
+        if (MobileControls.Instance != null && MobileControls.Instance.aimInput.sqrMagnitude > 0.05f)
+        {
+            Vector3 aimDir = new Vector3(MobileControls.Instance.aimInput.x, 0f, MobileControls.Instance.aimInput.y);
+            targetRotation = Quaternion.LookRotation(aimDir);
+            handledMobileAim = true;
+
+            if (visualAimHolder != null) visualAimHolder.rotation = targetRotation;
+        }
+
+        if (!handledMobileAim && Mouse.current != null && cam != null)
         {
             Vector2 mouseScreenPos = Mouse.current.position.ReadValue();
             Ray ray = cam.ScreenPointToRay(mouseScreenPos);
@@ -98,11 +116,7 @@ public class PlayerController25D : MonoBehaviour
                 if (lookDirection.sqrMagnitude > 0.001f)
                 {
                     targetRotation = Quaternion.LookRotation(lookDirection);
-
-                    if (visualAimHolder != null)
-                    {
-                        visualAimHolder.rotation = targetRotation;
-                    }
+                    if (visualAimHolder != null) visualAimHolder.rotation = targetRotation;
                 }
             }
         }

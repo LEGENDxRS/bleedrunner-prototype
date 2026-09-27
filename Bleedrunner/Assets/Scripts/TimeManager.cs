@@ -23,6 +23,14 @@ public class TimeManager : MonoBehaviour
     [Header("UI Hooks")]
     public TextMeshProUGUI timerDisplay;
     public GameObject gameOverUI;
+    [Tooltip("Drag your GameOverText object here to let it switch messages automatically.")]
+    public TextMeshProUGUI gameOverText;
+
+    [Header("Device-Specific Death Text")]
+    [TextArea(2, 3)]
+    public string pcDeathMessage = "FLATLINED\n<size=55%><color=#AAAAAA>PRESS [R] TO REBOOT</color></size>";
+    [TextArea(2, 3)]
+    public string mobileDeathMessage = "FLATLINED\n<size=55%><color=#AAAAAA>TAP ANYWHERE TO REBOOT</color></size>";
 
     [Header("Telemetry & Director")]
     public int killsThisSecond = 0;
@@ -32,6 +40,7 @@ public class TimeManager : MonoBehaviour
     private PlayerController25D player;
     private Vector3 playerStartPos;
     private float initialMaxTime;
+    private float deadTimeElapsed = 0f;
 
     void Awake()
     {
@@ -50,11 +59,24 @@ public class TimeManager : MonoBehaviour
 
     void Update()
     {
+        // --- DEATH & REBOOT LOGIC ---
         if (isDead)
         {
-            if (Keyboard.current != null && Keyboard.current.rKey.wasPressedThisFrame)
+            deadTimeElapsed += Time.unscaledDeltaTime;
+
+            // Small 0.35s grace window prevents accidental instant skips while mashing controls
+            if (deadTimeElapsed >= 0.35f)
             {
-                SoftResetRun();
+                bool rPressed = Keyboard.current != null && Keyboard.current.rKey.wasPressedThisFrame;
+                bool screenTapped = Touchscreen.current != null && Touchscreen.current.primaryTouch.press.wasPressedThisFrame;
+                bool mouseClicked = Mouse.current != null && Mouse.current.leftButton.wasPressedThisFrame;
+
+                // On Mobile: Tap anywhere (or touch screen)
+                // On PC: Press [R] or Left Click
+                if (rPressed || screenTapped || (IsMobileDevice() && mouseClicked))
+                {
+                    SoftResetRun();
+                }
             }
             return;
         }
@@ -118,10 +140,27 @@ public class TimeManager : MonoBehaviour
     void TriggerDeath()
     {
         isDead = true;
+        deadTimeElapsed = 0f;
         Debug.Log("<color=red>[BLEEDRUNNER]</color> Player flatlined!");
+
+        // Update the message based on device
+        if (gameOverText != null)
+        {
+            gameOverText.text = IsMobileDevice() ? mobileDeathMessage : pcDeathMessage;
+        }
 
         if (gameOverUI != null) gameOverUI.SetActive(true);
         if (player != null) player.enabled = false;
+    }
+
+    public bool IsMobileDevice()
+    {
+#if UNITY_EDITOR
+        // Test mobile behavior in Editor if you have mobile controls enabled
+        return MobileControls.Instance != null && MobileControls.Instance.showInEditorForTesting;
+#else
+        return Application.isMobilePlatform || SystemInfo.deviceType == DeviceType.Handheld;
+#endif
     }
 
     public void SoftResetRun()
@@ -156,6 +195,7 @@ public class TimeManager : MonoBehaviour
         timerDrainRate = 1.0f;
         isDead = false;
         isPaused = false;
+        deadTimeElapsed = 0f;
         killsThisSecond = 0;
         killVelocity = 0f;
         velocitySampleTimer = 0f;
