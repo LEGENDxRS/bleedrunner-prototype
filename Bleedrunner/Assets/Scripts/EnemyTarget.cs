@@ -3,13 +3,11 @@ using UnityEngine;
 [RequireComponent(typeof(Rigidbody))]
 public class EnemyTarget : MonoBehaviour
 {
-    [Header("Combat Stats")]
+    [Header("Active Dials (Injected by EnemySpawner)")]
     public int health = 1;
+    public float chaseSpeed = 4.5f;
     public float timeReward = 1.5f;
     public float timePenaltyOnHit = 2.0f;
-
-    [Header("Movement")]
-    public float chaseSpeed = 4.5f;
 
     [Header("Impact Camera Shake")]
     public bool enableHitShake = true;
@@ -18,6 +16,8 @@ public class EnemyTarget : MonoBehaviour
 
     private Transform player;
     private Rigidbody rb;
+    private float losCheckTimer;
+    private bool hasLineOfSight = false;
 
     void Awake()
     {
@@ -25,6 +25,7 @@ public class EnemyTarget : MonoBehaviour
         rb.interpolation = RigidbodyInterpolation.Interpolate;
         rb.useGravity = false;
         rb.constraints = RigidbodyConstraints.FreezePositionY | RigidbodyConstraints.FreezeRotation;
+        losCheckTimer = Random.Range(0f, 0.15f);
     }
 
     void OnEnable()
@@ -43,6 +44,39 @@ public class EnemyTarget : MonoBehaviour
         if (target != null) player = target.transform;
     }
 
+    void Update()
+    {
+        if (player == null) return;
+
+        losCheckTimer += Time.deltaTime;
+        if (losCheckTimer >= 0.15f)
+        {
+            losCheckTimer = 0f;
+            Vector3 rayStart = transform.position; rayStart.y = 0.6f;
+            Vector3 rayEnd = player.position; rayEnd.y = 0.6f;
+            Vector3 diff = rayEnd - rayStart;
+
+            // Check if a physical wall is blocking the view
+            if (Physics.Raycast(rayStart, diff.normalized, out RaycastHit hit, diff.magnitude))
+            {
+                // If it hits the player or another enemy, line of sight is clear
+                if (hit.transform == player || hit.transform.CompareTag("Player") || hit.transform.CompareTag("Enemy"))
+                {
+                    hasLineOfSight = true;
+                }
+                else
+                {
+                    // Blocked by maze wall or obstacle
+                    hasLineOfSight = false;
+                }
+            }
+            else
+            {
+                hasLineOfSight = true;
+            }
+        }
+    }
+
     void FixedUpdate()
     {
         if (player == null || (TimeManager.Instance != null && (TimeManager.Instance.isDead || TimeManager.Instance.isPaused)))
@@ -51,9 +85,11 @@ public class EnemyTarget : MonoBehaviour
             return;
         }
 
-        // Get smart navigation waypoint from the maze generator
+        float distToPlayer = Vector3.Distance(transform.position, player.position);
         Vector3 targetPoint = player.position;
-        if (ProceduralMazeGenerator.Instance != null)
+
+        // Only query the flowfield if far away AND obstructed by a wall
+        if (!hasLineOfSight && distToPlayer > 3.5f && ProceduralMazeGenerator.Instance != null)
         {
             targetPoint = ProceduralMazeGenerator.Instance.GetNextWaypointForEnemy(transform.position, player.position);
         }
@@ -69,7 +105,6 @@ public class EnemyTarget : MonoBehaviour
         }
         else
         {
-            // Close to node, push directly toward player
             Vector3 direct = (player.position - transform.position);
             direct.y = 0f;
             rb.linearVelocity = direct.normalized * chaseSpeed;
@@ -79,10 +114,7 @@ public class EnemyTarget : MonoBehaviour
     public void TakeDamage(int damage)
     {
         health -= damage;
-        if (health <= 0)
-        {
-            Die();
-        }
+        if (health <= 0) Die();
     }
 
     void Die()
@@ -92,11 +124,7 @@ public class EnemyTarget : MonoBehaviour
             TimeManager.Instance.AddTime(timeReward);
         }
 
-        if (ChamberManager.Instance != null)
-        {
-            ChamberManager.Instance.RegisterKill();
-        }
-
+        if (ChamberManager.Instance != null) ChamberManager.Instance.RegisterKill();
         Destroy(gameObject);
     }
 
@@ -107,7 +135,6 @@ public class EnemyTarget : MonoBehaviour
         if (collision.gameObject.CompareTag("Player"))
         {
             bool isProtected = ChamberManager.Instance != null && ChamberManager.Instance.isGraceBufferActive;
-
             if (!isProtected && TimeManager.Instance != null)
             {
                 TimeManager.Instance.DeductTime(timePenaltyOnHit);

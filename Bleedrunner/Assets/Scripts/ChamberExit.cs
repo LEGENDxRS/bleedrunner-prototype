@@ -6,7 +6,7 @@ public class ChamberExit : MonoBehaviour
     public static ChamberExit Instance;
 
     [Header("Visual Feedback")]
-    public Renderer gateRenderer;
+    public ParticleSystem[] gateRenderer;
     public Color lockedColor = new Color(0.4f, 0.1f, 0.1f, 0.4f);
     public Color readyColor = new Color(1f, 1f, 1f, 1f);
 
@@ -21,19 +21,18 @@ public class ChamberExit : MonoBehaviour
         col = GetComponent<Collider>();
         col.isTrigger = true;
 
-        if (gateRenderer == null)
-        {
-            gateRenderer = GetComponent<Renderer>();
-        }
     }
 
     public void SetGateLocked(bool locked)
     {
         activated = false;
 
-        if (gateRenderer != null && gateRenderer.material != null)
+        foreach (var gateRenderer in gateRenderer)  
         {
-            gateRenderer.material.color = locked ? lockedColor : readyColor;
+            if (gateRenderer == null) continue;
+
+            var gateMain = gateRenderer.main;
+            gateMain.startColor = locked ? lockedColor : readyColor;
         }
     }
 
