@@ -1,21 +1,53 @@
-MIT License
+PROPRIETARY AND CONFIDENTIAL LICENSE
 
-Copyright (c) 2026 LEGENDxRS
+Copyright © 2026 Raunak Sinha. All rights reserved.
 
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the Software is
-furnished to do so, subject to the following conditions:
+TERMS & CONDITIONS
 
-The above copyright notice and this permission notice shall be included in all
-copies or substantial portions of the Software.
+1. OWNERSHIP
+   All original source code, game-design concepts, mechanics, systems, prototypes, 
+   documentation, assets, artwork, models, scripts, project files, tools, and other 
+   original materials contained in this repository remain the exclusive property of 
+   Raunak Sinha unless explicitly identified as third-party material.
 
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-SOFTWARE.
+2. RESTRICTED USE
+   No license is granted to any person or entity to copy, reproduce, modify, adapt, 
+   distribute, publish, sublicense, sell, commercialize, incorporate, or create 
+   derivative works from the original repository materials. All such acts are 
+   expressly prohibited without prior written permission.
+
+3. PUBLIC ACCESSIBILITY ≠ PERMISSION
+   The repository being publicly accessible through GitHub does NOT constitute 
+   permission to use, reproduce, or distribute the original work. Public visibility 
+   is limited to portfolio, demonstration, and evaluation purposes only, subject 
+   to GitHub's platform terms of service.
+
+4. AUTHORIZATION REQUIREMENT
+   Any use beyond viewing the repository through GitHub's standard interface 
+   requires prior explicit written permission from Raunak Sinha. This includes, 
+   but is not limited to:
+   
+   • Commercial use or sale
+   • Internal company or organizational use
+   • Implementation in another project
+   • Adaptation or modification
+   • Redistribution in any form
+   • Incorporation into another product or service
+   • Academic or research use beyond fair dealing/fair use
+
+5. NO IMPLIED LICENSE
+   Nothing in this repository or its public visibility grants or implies any 
+   right, title, or license to the original materials. All rights not expressly 
+   granted are reserved.
+
+6. THIRD-PARTY MATERIALS
+   Third-party materials, libraries, engines, frameworks, dependencies, fonts, 
+   and assets retain their respective licenses. This proprietary notice applies 
+   only to original work created by Raunak Sinha and does not supersede, modify, 
+   or claim ownership of third-party materials.
+
+7. NO WARRANTY
+   The original materials are provided "as is" without warranty of any kind, 
+   express or implied.
+
+For permission requests or inquiries, contact Raunak Sinha directly.
